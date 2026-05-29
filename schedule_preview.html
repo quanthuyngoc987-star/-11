@@ -1,0 +1,223 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>教室管家课程表</title>
+  <style>
+    :root{font-family:Arial,sans-serif;color:#18212f;background:#eef3f7}
+    body{margin:0;padding:18px}
+    .wrap{max-width:1080px;margin:auto}
+    .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .top h1{margin:0;font-size:30px}
+    .card,.hero{background:#fff;border:1px solid #d8e0e8;border-radius:8px;padding:14px;box-shadow:0 1px 2px #0001;margin-top:12px}
+    .hero{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .label{font-size:13px;color:#5b6778}
+    .big{font-size:26px;font-weight:700;margin-top:6px}
+    .row{display:flex;gap:9px;flex-wrap:wrap}
+    button{height:40px;border:0;border-radius:6px;background:#1769aa;color:#fff;padding:0 14px;font-weight:700}
+    button.secondary{background:#384250}
+    button.delete{background:#a43f3f}
+    button.small{height:34px;padding:0 10px}
+    button:disabled{background:#9ca3af}
+    .status{font-weight:700;color:#0b7a45}
+    .countdown{font-size:16px;font-weight:700;color:#1769aa;margin-top:8px}
+    .tools{margin-top:10px;align-items:center}
+    .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+    .rule{border:1px solid #e1e7ee;background:#f8fafc;border-radius:8px;padding:10px}
+    .timeline{display:grid;gap:8px;margin-top:10px}
+    .timeline-item{border-left:4px solid #cbd5e1;background:#f8fafc;border-radius:6px;padding:9px}
+    .timeline-item.active{border-left-color:#1769aa;background:#eef6ff}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    tr.active-row{background:#eef6ff}
+    tr.active-row td:first-child{border-left:4px solid #1769aa}
+    th,td{border-bottom:1px solid #e5e7eb;padding:9px;text-align:left;font-size:14px}
+    input,select{width:100%;box-sizing:border-box;height:34px;border:1px solid #cbd5e1;border-radius:6px;padding:0 8px;background:#fff}
+    input:disabled,select:disabled{border:0;background:transparent;color:#18212f;padding:0}
+    .timebox{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    @media(max-width:760px){.hero{grid-template-columns:1fr}table,thead,tbody,tr,th,td{display:block}thead{display:none}td{border-bottom:0;padding:5px 0}tr{border-bottom:1px solid #e5e7eb;padding:8px 0}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>教室管家课程表</h1>
+        <div class="label">学生查看课程，管理员维护自动调度</div>
+      </div>
+      <div class="row">
+        <button class="secondary" onclick="location.href='current_page_preview.html'">返回首页</button>
+        <button id="editBtn" onclick="adminEdit()">管理员编辑</button>
+        <button id="saveBtn" onclick="saveSchedule()" disabled>保存</button>
+        <button class="secondary" onclick="loadSchedule()">刷新</button>
+      </div>
+    </div>
+
+    <section class="hero">
+      <div>
+        <div class="label">今日状态</div>
+        <div id="todayState" class="big">--</div>
+        <div class="label" id="todayHint" style="margin-top:8px">--</div>
+        <div id="nextCountdown" class="countdown">--</div>
+      </div>
+      <div>
+        <div class="label">自动策略</div>
+        <div class="rules">
+          <div class="rule"><b>课前5分钟</b><div class="label">本地判断开灯，并触发 AI 分析</div></div>
+          <div class="rule"><b>课后5分钟</b><div class="label">无人时自动关灯</div></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="card">
+      <div class="row">
+        <div class="status" id="mode">只读查看</div>
+        <div class="label" id="msg"></div>
+      </div>
+      <div class="row tools">
+        <button id="addBtn" class="secondary" onclick="addCourse()" disabled>新增课程</button>
+        <div class="label">最多 8 条课程；管理员模式下可删除课程并套用节次模板。</div>
+      </div>
+      <div id="todayList" class="timeline"></div>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>启用</th><th>星期</th><th>时间</th><th>课程</th><th>教室</th><th>快捷节次</th><th>自动策略</th><th>操作</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const MAX_ITEMS=8;
+    const days=['未设置','周一','周二','周三','周四','周五','周六','周日'];
+    const periods=[
+      {label:'选择节次',start:'',end:''},
+      {label:'第1节 08:00-09:40',start:'08:00',end:'09:40'},
+      {label:'第2节 10:00-11:40',start:'10:00',end:'11:40'},
+      {label:'第3节 14:00-15:40',start:'14:00',end:'15:40'},
+      {label:'第4节 16:00-17:40',start:'16:00',end:'17:40'},
+      {label:'晚课 19:00-20:40',start:'19:00',end:'20:40'}
+    ];
+    const defaults=[
+      {day:1,start:'08:00',end:'09:40',name:'智能物联网',room:'A301',enabled:true},
+      {day:1,start:'10:00',end:'11:40',name:'嵌入式系统',room:'A301',enabled:true},
+      {day:2,start:'14:00',end:'15:40',name:'传感器技术',room:'A301',enabled:true},
+      {day:3,start:'08:00',end:'09:40',name:'AIoT 实训',room:'A301',enabled:true},
+      {day:4,start:'10:00',end:'11:40',name:'数据采集',room:'A301',enabled:true},
+      {day:5,start:'14:00',end:'15:40',name:'项目展示',room:'A301',enabled:true},
+      {day:0,start:'00:00',end:'00:00',name:'',room:'',enabled:false},
+      {day:0,start:'00:00',end:'00:00',name:'',room:'',enabled:false}
+    ];
+    let items=[];
+    let editing=false;
+    let admin={username:'',password:''};
+
+    function esc(s){return String(s||'').replace(/[&<>']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;'}[c]));}
+    function dayNo(){const d=new Date().getDay();return d===0?7:d;}
+    function minOf(t){return Number(t.slice(0,2))*60+Number(t.slice(3,5));}
+    function isBlank(it){return !it.enabled&&Number(it.day)===0&&it.start==='00:00'&&it.end==='00:00'&&!it.name&&!it.room;}
+    function compact(list){return list.filter(it=>!isBlank(it)).slice(0,MAX_ITEMS);}
+    function blankCourse(){return {day:dayNo(),start:'08:00',end:'09:40',name:'新课程',room:'A301',enabled:true};}
+    function fmtSec(sec){sec=Math.max(0,Math.floor(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return h?`${h}小时${m}分`:`${m}分${String(s).padStart(2,'0')}秒`;}
+    function todayInfo(){
+      const now=new Date();
+      const nowSec=now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
+      const today=items.filter(x=>x.enabled&&x.day===dayNo()).sort((a,b)=>minOf(a.start)-minOf(b.start));
+      let current=null,next=null;
+      for(const it of today){
+        const st=minOf(it.start)*60,en=minOf(it.end)*60;
+        if(nowSec>=st&&nowSec<=en) current=it;
+        if(!next&&nowSec<st) next=it;
+      }
+      return {now,nowSec,today,current,next};
+    }
+    function daySelect(v,i){
+      let h=`<select ${editing?'':'disabled'} onchange='items[${i}].day=Number(this.value)'>`;
+      for(let d=0;d<days.length;d++) h+=`<option value='${d}' ${Number(v)===d?'selected':''}>${days[d]}</option>`;
+      return h+'</select>';
+    }
+    function periodSelect(i){
+      let h=`<select ${editing?'':'disabled'} onchange='applyPeriod(${i},this.value)'>`;
+      periods.forEach((p,idx)=>h+=`<option value='${idx}'>${p.label}</option>`);
+      return h+'</select>';
+    }
+    function renderToday(){
+      const info=todayInfo();
+      const {today,current,next,nowSec}=info;
+      todayState.textContent=current?'正在上课':(next?'等待下一节':'今日课程结束');
+      todayHint.textContent=current?`${current.name} ${current.start}-${current.end} · ${current.room}`:(next?`${next.name} 将在 ${next.start} 开始`:'当前没有后续课程');
+      if(current) nextCountdown.textContent=`距离下课 ${fmtSec(minOf(current.end)*60-nowSec)}`;
+      else if(next) nextCountdown.textContent=`距离下一节 ${fmtSec(minOf(next.start)*60-nowSec)}`;
+      else nextCountdown.textContent='今日自动调度已结束';
+      todayList.innerHTML=today.length?today.map(it=>{
+        const active=current===it?' active':'';
+        return `<div class="timeline-item${active}"><b>${it.start}-${it.end}</b> ${esc(it.name)}<div class="label">${esc(it.room||'A301')} · 课前准备 + 课后节能</div></div>`;
+      }).join(''):'<div class="timeline-item">今日没有已启用课程</div>';
+      return info;
+    }
+    function render(){
+      rows.innerHTML='';
+      const info=renderToday();
+      if(!items.length) rows.innerHTML='<tr><td colspan="8"><span class="label">暂无课程，请进入管理员编辑后新增。</span></td></tr>';
+      items.forEach((it,i)=>{
+        const tr=document.createElement('tr');
+        if(info.current===it) tr.className='active-row';
+        tr.innerHTML=`<td><input type='checkbox' ${it.enabled?'checked':''} ${editing?'':'disabled'} onchange='items[${i}].enabled=this.checked'></td><td>${daySelect(it.day,i)}</td><td><div class='timebox'><input type='time' value='${esc(it.start)}' ${editing?'':'disabled'} onchange='items[${i}].start=this.value'><input type='time' value='${esc(it.end)}' ${editing?'':'disabled'} onchange='items[${i}].end=this.value'></div></td><td><input value='${esc(it.name)}' ${editing?'':'disabled'} onchange='items[${i}].name=this.value'></td><td><input value='${esc(it.room)}' ${editing?'':'disabled'} onchange='items[${i}].room=this.value'></td><td>${periodSelect(i)}</td><td><span class='label'>课前5分钟开灯+AI，课后无人关灯</span></td><td><button class='delete small' ${editing?'':'disabled'} onclick='deleteCourse(${i})'>删除</button></td>`;
+        rows.appendChild(tr);
+      });
+      mode.textContent=editing?'管理员编辑':'只读查看';
+      saveBtn.disabled=!editing;
+      addBtn.disabled=!editing||items.length>=MAX_ITEMS;
+      msg.textContent=editing?`已进入编辑模式，还可新增 ${MAX_ITEMS-items.length} 条`:'';
+    }
+    function loadSchedule(){
+      items=compact(JSON.parse(localStorage.getItem('classroom_schedule')||'null')||structuredClone(defaults));
+      editing=false;
+      msg.textContent='';
+      render();
+    }
+    function adminEdit(){
+      const u=prompt('管理员用户名');
+      if(u===null) return;
+      const p=prompt('管理员密码');
+      if(p===null) return;
+      if(u!=='admin'||p!=='admin'){alert('管理员身份验证失败');return;}
+      admin={username:u,password:p};
+      editing=true;
+      msg.textContent='已进入编辑模式';
+      render();
+    }
+    function addCourse(){
+      if(!editing) return;
+      if(items.length>=MAX_ITEMS){alert('最多只能保存 8 条课程');return;}
+      items.push(blankCourse());
+      render();
+    }
+    function deleteCourse(i){
+      if(!editing) return;
+      if(!confirm('删除这节课程？')) return;
+      items.splice(i,1);
+      render();
+    }
+    function applyPeriod(i,v){
+      if(!editing||Number(v)===0) return;
+      const p=periods[Number(v)];
+      items[i].start=p.start;items[i].end=p.end;
+      render();
+    }
+    function saveSchedule(){
+      if(admin.username!=='admin'||admin.password!=='admin'){alert('管理员身份验证失败');return;}
+      localStorage.setItem('classroom_schedule',JSON.stringify(items.slice(0,MAX_ITEMS)));
+      alert('课程表已保存');
+      editing=false;
+      loadSchedule();
+    }
+    loadSchedule();
+    setInterval(()=>{if(editing)renderToday();else render();},1000);
+  </script>
+</body>
+</html>

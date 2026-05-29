@@ -1,0 +1,164 @@
+menu "GUI Web Test Configuration"
+
+    choice GUI_WEB_TEST_WIFI_MODE
+        prompt "Wi-Fi mode"
+        default GUI_WEB_TEST_WIFI_MODE_SOFTAP
+        help
+            SoftAP lets a phone connect directly to the ESP32-S3 at 192.168.4.1.
+            Station lets the ESP32-S3 connect to a phone hotspot or router.
+
+        config GUI_WEB_TEST_WIFI_MODE_SOFTAP
+            bool "SoftAP"
+
+        config GUI_WEB_TEST_WIFI_MODE_STA
+            bool "Station"
+    endchoice
+
+    config GUI_WEB_TEST_AP_SSID
+        string "SoftAP SSID"
+        default "ESP32S3-GUI-TEST"
+
+    config GUI_WEB_TEST_AP_PASSWORD
+        string "SoftAP password"
+        default "12345678"
+
+    config GUI_WEB_TEST_STA_SSID
+        string "Station SSID"
+        default ""
+
+    config GUI_WEB_TEST_STA_PASSWORD
+        string "Station password"
+        default ""
+
+    config GUI_WEB_TEST_CONNECTIVITY_URL
+        string "HTTPS connectivity test URL"
+        default "https://www.baidu.com/"
+        help
+            Used when LLM API URL is empty. This verifies that ESP32-S3 can reach the internet over HTTPS.
+
+    config GUI_WEB_TEST_LLM_API_URL
+        string "OpenAI-compatible LLM API URL"
+        default "https://api.deepseek.com/chat/completions"
+        help
+            Optional. Example: https://api.deepseek.com/chat/completions
+
+    config GUI_WEB_TEST_LLM_API_KEY
+        string "LLM API key"
+        default ""
+        help
+            Optional. Kept in local sdkconfig; do not commit sdkconfig with a real key.
+
+    config GUI_WEB_TEST_LLM_MODEL
+        string "LLM model"
+        default "deepseek-chat"
+        help
+            Model name used when LLM API URL and key are configured.
+
+    config GUI_WEB_TEST_LIGHT_GPIO
+        int "Lighting PWM GPIO"
+        default 41 if IDF_TARGET_ESP32S3
+        default -1
+
+    config GUI_WEB_TEST_FAN_GPIO
+        int "Fan PWM GPIO"
+        default 13 if IDF_TARGET_ESP32S3
+        default -1
+
+    config GUI_WEB_TEST_ALARM_GPIO
+        int "Alarm output GPIO"
+        default 12 if IDF_TARGET_ESP32S3
+        default -1
+
+    config GUI_WEB_TEST_BUZZER_GPIO
+        int "Active buzzer signal GPIO"
+        default 37 if IDF_TARGET_ESP32S3
+        default -1
+        help
+            Signal pin for a 3-pin active buzzer module. Connect S/IO to this GPIO,
+            VCC to 3V3, and GND to GND. The buzzer follows alarm_power.
+
+    config GUI_WEB_TEST_OUTPUT_ACTIVE_LEVEL
+        int "Output active level"
+        default 1
+        range 0 1
+
+    config GUI_WEB_TEST_PWM_FREQUENCY_HZ
+        int "PWM frequency Hz"
+        default 5000
+        range 100 40000
+
+    config GUI_WEB_TEST_REAL_SENSORS_ENABLE
+        bool "Enable real hardware sensors"
+        default y if IDF_TARGET_ESP32S3
+        default n
+
+    config GUI_WEB_TEST_SENSOR_I2C_SDA_GPIO
+        int "Sensor I2C SDA GPIO"
+        default 8 if IDF_TARGET_ESP32S3
+        default 8
+
+    config GUI_WEB_TEST_SENSOR_I2C_SCL_GPIO
+        int "Sensor I2C SCL GPIO"
+        default 9 if IDF_TARGET_ESP32S3
+        default 9
+
+    config GUI_WEB_TEST_PMS_UART_RX_GPIO
+        int "PMS5003 TX to ESP32 RX GPIO"
+        default 17 if IDF_TARGET_ESP32S3
+        default 17
+
+    config GUI_WEB_TEST_PMS_UART_TX_GPIO
+        int "PMS5003 RX from ESP32 TX GPIO"
+        default 18 if IDF_TARGET_ESP32S3
+        default 18
+
+    config GUI_WEB_TEST_LD2410_UART_RX_GPIO
+        int "LD2410 TX to ESP32 RX GPIO"
+        default 15 if IDF_TARGET_ESP32S3
+        default 15
+
+    config GUI_WEB_TEST_LD2410_UART_TX_GPIO
+        int "LD2410 RX from ESP32 TX GPIO"
+        default 16 if IDF_TARGET_ESP32S3
+        default 16
+
+    config GUI_WEB_TEST_LD2410_OUT_GPIO
+        int "LD2410 OUT GPIO"
+        default 4 if IDF_TARGET_ESP32S3
+        default 4
+
+    config GUI_WEB_TEST_INMP441_ENABLE
+        bool "Enable INMP441 I2S microphone"
+        default y if IDF_TARGET_ESP32S3
+        default n
+
+    config GUI_WEB_TEST_INMP441_BCLK_GPIO
+        int "INMP441 SCK/BCLK GPIO"
+        default 1 if IDF_TARGET_ESP32S3
+        default 1
+
+    config GUI_WEB_TEST_INMP441_WS_GPIO
+        int "INMP441 WS/LRCLK GPIO"
+        default 2 if IDF_TARGET_ESP32S3
+        default 2
+
+    config GUI_WEB_TEST_INMP441_DIN_GPIO
+        int "INMP441 SD/DOUT to ESP32 GPIO"
+        default 42 if IDF_TARGET_ESP32S3
+        default 42
+
+    config GUI_WEB_TEST_INMP441_RIGHT_CHANNEL
+        bool "INMP441 L/R pin is tied to 3V3"
+        default n
+
+    config GUI_WEB_TEST_INMP441_SAMPLE_RATE_HZ
+        int "INMP441 sample rate Hz"
+        default 16000
+        range 8000 48000
+
+    config GUI_WEB_TEST_INMP441_DBFS_TO_DBA_OFFSET
+        int "INMP441 dBFS to dBA offset"
+        default 120
+        range 80 140
+
+endmenu

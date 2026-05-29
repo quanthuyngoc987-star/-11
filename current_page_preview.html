@@ -1,0 +1,376 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>教室管家</title>
+  <style>
+    :root{font-family:Arial,sans-serif;color:#18212f;background:#eef3f7}
+    body{margin:0;padding:18px}
+    .wrap{max-width:1080px;margin:auto}
+    .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .brand h1{margin:0;font-size:30px}
+    .brand .label{margin-top:5px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:12px;margin-top:12px}
+    .columns{display:grid;grid-template-columns:1.1fr .9fr;gap:12px;margin-top:12px}
+    .card,.hero{background:#fff;border:1px solid #d8e0e8;border-radius:8px;padding:14px;box-shadow:0 1px 2px #0001}
+    .hero{margin-top:14px;display:grid;grid-template-columns:1.2fr 1fr;gap:16px;align-items:stretch}
+    .hero h2{font-size:38px;margin:5px 0 8px}
+    .hero-state{font-size:22px;font-weight:700;margin-top:6px}
+    .hero-tip{line-height:1.55;margin:8px 0 0;color:#394557}
+    .hero-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .stat{border:1px solid #e1e7ee;border-radius:8px;padding:11px;background:#f8fafc}
+    .label{font-size:13px;color:#5b6778}
+    .value{font-size:26px;font-weight:700;margin-top:6px}
+    .compact-value{font-size:16px;font-weight:700;margin-top:4px;line-height:1.35;word-break:break-word}
+    .section-title{font-size:18px;font-weight:700;margin-top:16px}
+    button{height:40px;border:0;border-radius:6px;background:#1769aa;color:white;padding:0 14px;font-weight:700}
+    button.secondary{background:#384250}
+    button.danger{background:#a43f3f}
+    .row{display:flex;gap:9px;flex-wrap:wrap}
+    .ok{color:#0b7a45}
+    .warn{color:#a15c00}
+    .bad-text{color:#9f1d1d}
+    .act-on{color:#0b7a45}
+    .act-off{color:#6b7280}
+    .pill{display:inline-flex;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700;background:#e5e7eb;color:#374151;white-space:nowrap}
+    .pill.run{background:#fff3cd;color:#8a5a00}
+    .pill.good{background:#dff6e8;color:#0b7a45}
+    .pill.bad{background:#fde2e2;color:#9f1d1d}
+    .pill.blue{background:#dbeafe;color:#1d4e89}
+    .mini-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+    .section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .ai-head{font-size:24px;font-weight:700;margin-top:5px}
+    .reason{margin-top:6px;line-height:1.45}
+    .timeline,.log{display:grid;gap:8px;margin-top:10px}
+    .timeline-item,.log-item{border-left:4px solid #cbd5e1;background:#f8fafc;border-radius:6px;padding:9px}
+    .timeline-item.active{border-left-color:#1769aa;background:#eef6ff}
+    .chart-wrap{margin-top:10px}
+    .chart-meta{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+    .chart-legend{display:flex;gap:12px;flex-wrap:wrap}
+    .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px}
+    canvas{width:100%;height:180px;border:1px solid #e1e7ee;border-radius:8px;background:#f8fafc}
+    .debug{margin-top:12px}
+    .debug summary{cursor:pointer;font-weight:700;color:#384250}
+    .debug pre{margin-top:10px}
+    pre{white-space:pre-wrap;background:#111827;color:#e5e7eb;border-radius:8px;padding:12px;overflow:auto}
+    @media(max-width:760px){.hero,.columns{grid-template-columns:1fr}.hero h2{font-size:32px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <h1>教室管家</h1>
+        <div class="label">课前预判 · 课中守护 · 课后节能 - web v10</div>
+      </div>
+      <div id="link" class="label"></div>
+    </div>
+
+    <section class="hero">
+      <div>
+        <div class="label">当前教室</div>
+        <h2 id="roomName">A301</h2>
+        <div id="stewardState" class="hero-state">等待数据</div>
+        <p id="stewardTip" class="hero-tip">正在读取教室状态。</p>
+      </div>
+      <div class="hero-grid">
+        <div class="stat"><div class="label">当前课程</div><div id="currentClass" class="compact-value">--</div></div>
+        <div class="stat"><div class="label">下一节课</div><div id="nextClass" class="compact-value">--</div></div>
+        <div class="stat"><div class="label">北京时间</div><div id="clock" class="compact-value">--</div></div>
+        <div class="stat"><div class="label">自动调度</div><div id="classPhase" class="compact-value">--</div></div>
+      </div>
+    </section>
+
+    <div class="section-title">教室状态</div>
+    <div class="grid">
+      <div class="card"><div class="label">联网</div><div id="conn" class="value warn">...</div></div>
+      <div class="card"><div class="label">在室人数</div><div id="occ" class="value">--</div></div>
+      <div class="card"><div class="label">教室健康指数</div><div id="health" class="value">--</div></div>
+      <div class="card"><div class="label">环境判断</div><div id="risk" class="value">--</div></div>
+      <div class="card"><div class="label">温度</div><div id="temp" class="value">--</div></div>
+      <div class="card"><div class="label">湿度</div><div id="hum" class="value">--</div></div>
+      <div class="card"><div class="label">CO2</div><div id="co2" class="value">--</div></div>
+      <div class="card"><div class="label">PM2.5</div><div id="pm25" class="value">--</div></div>
+      <div class="card"><div class="label">照度</div><div id="lux" class="value">--</div></div>
+      <div class="card"><div class="label">噪声</div><div id="noise" class="value">--</div></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="section-head">
+        <div><div class="label">最近环境曲线</div><div class="compact-value">CO2、PM2.5 与温度趋势</div></div>
+        <span id="envNow" class="pill blue">等待数据</span>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-meta">
+          <div class="label">最近 60 秒采样，自动随页面 1 秒刷新</div>
+          <div class="chart-legend">
+            <span class="label"><i class="dot" style="background:#1769aa"></i>CO2</span>
+            <span class="label"><i class="dot" style="background:#a43f3f"></i>PM2.5</span>
+            <span class="label"><i class="dot" style="background:#0b7a45"></i>温度</span>
+          </div>
+        </div>
+        <canvas id="envChart"></canvas>
+      </div>
+    </div>
+
+    <div class="section-title">教室设备</div>
+    <div class="grid">
+      <div class="card"><div class="label">照明</div><div id="actLight" class="value">--</div></div>
+      <div class="card"><div class="label">通风</div><div id="actFan" class="value">--</div></div>
+      <div class="card"><div class="label">安防报警</div><div id="actAlarm" class="value">--</div></div>
+      <div class="card"><div class="label">蜂鸣器</div><div id="actBuzzer" class="value">--</div></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="section-head">
+        <div><div class="label">设备控制</div><div class="compact-value">手动控制与 AI 分析</div></div>
+        <button class="secondary" onclick="location.href='schedule_preview.html'">课程表</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button onclick="control('light')">照明</button>
+        <button onclick="control('fan')">通风</button>
+        <button class="danger" onclick="control('alarm')">报警</button>
+        <button class="secondary" onclick="runAiTest()">AI 分析</button>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="card">
+        <div class="section-head">
+          <div><div class="label">教室管家建议</div><div id="aiHeadline" class="ai-head">未判断</div></div>
+          <div id="aiBadge" class="pill">idle</div>
+        </div>
+        <div class="mini-grid">
+          <div><div class="label">管家状态</div><div id="aiStatus" class="compact-value">--</div></div>
+          <div><div class="label">HTTP 状态码</div><div id="aiHttp" class="compact-value">--</div></div>
+          <div><div class="label">环境判断</div><div id="aiConditionText" class="compact-value">--</div></div>
+          <div><div class="label">已执行动作</div><div id="aiAction" class="compact-value">--</div></div>
+        </div>
+        <div class="label" style="margin-top:12px">说明</div>
+        <div id="aiReason" class="reason">--</div>
+        <details class="debug"><summary>Raw 返回</summary><pre id="aiRaw">Idle</pre></details>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div><div class="label">今日课程</div><div id="todaySummary" class="compact-value">--</div></div>
+          <span class="pill blue">自动策略</span>
+        </div>
+        <div id="todayList" class="timeline"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="section-head">
+        <div><div class="label">管家记录</div><div class="compact-value">最近状态变化</div></div>
+        <span id="sched" class="pill">--</span>
+      </div>
+      <div id="events" class="log"></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="section-head">
+        <div><div class="label">验收测试</div><div class="compact-value">现场展示时切换教室场景</div></div>
+        <span class="pill blue">演示模式</span>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="secondary" onclick="scenario('Hardware')">真实教室</button>
+        <button class="secondary" onclick="scenario('AirQuality')">空气闷热</button>
+        <button class="secondary" onclick="scenario('Security')">异常闯入</button>
+        <button class="secondary" onclick="scenario('EmptyWaste')">课后无人</button>
+      </div>
+    </div>
+
+    <details class="card debug">
+      <summary>调试 JSON</summary>
+      <pre id="raw">{}</pre>
+    </details>
+  </div>
+
+  <script>
+    const scheduleDefaults=[
+      {day:1,start:'08:00',end:'09:40',name:'智能物联网',room:'A301',enabled:true},
+      {day:1,start:'10:00',end:'11:40',name:'嵌入式系统',room:'A301',enabled:true},
+      {day:2,start:'14:00',end:'15:40',name:'传感器技术',room:'A301',enabled:true},
+      {day:3,start:'08:00',end:'09:40',name:'AIoT 实训',room:'A301',enabled:true},
+      {day:4,start:'10:00',end:'11:40',name:'数据采集',room:'A301',enabled:true},
+      {day:5,start:'14:00',end:'15:40',name:'项目展示',room:'A301',enabled:true},
+      {day:0,start:'00:00',end:'00:00',name:'',room:'',enabled:false},
+      {day:0,start:'00:00',end:'00:00',name:'',room:'',enabled:false}
+    ];
+    let scheduleItems=JSON.parse(localStorage.getItem('classroom_schedule')||'null')||structuredClone(scheduleDefaults);
+    const envHistory=[];
+    const mock={
+      device:{name:'教室管家',ip:'192.168.4.1',uptime_s:0},
+      time:{synced:true,sntp_started:true,timezone:'Asia/Shanghai',local:''},
+      sensors:{temperature_c:28.5,humidity:62,co2_ppm:1200,pm25_ugm3:48,ambient_light_lux:460,ambient_light_fallback:true,noise_dba:61.5,occupancy_count:18},
+      risk:{level:'AirQuality',comfort_score:74,air_quality_score:48,safety_score:92,recommendation:'Local fusion plus DeepSeek downlink control test'},
+      actuators:{light_power:false,light_brightness:40,fan_power:false,fan_speed:0,alarm_power:false,buzzer_power:false},
+      policy:{scenario:'Hardware',data_source:'hardware'},
+      schedule:{status:'课程表调度：STA 联网后 SNTP 同步北京时间，每 30 秒检查一次。'},
+      ai:{status:'idle',runs:0,http_status:0,esp_err:'ESP_OK',action:'暂无执行动作。',reason:'尚未进行 AI 分析。',summary:'暂无 AI 环境总结。',result:'点击 AI 分析，让教室管家生成风扇和报警建议。'}
+    };
+
+    function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+    function esc(x){return String(x||'').replace(/[&<>']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;'}[c]));}
+    function labelCondition(c){const m={normal:'正常',energy_save:'节能',air_quality:'空气质量',security:'安防',Normal:'正常',EnergySave:'节能',AirQuality:'空气质量',Security:'安防',connectivity:'联网测试',not_decided:'未判断'};return m[c]||c||'未判断';}
+    function getAiCondition(s){const reason=s.ai.reason||'';const m=reason.match(/condition=([A-Za-z_]+)/);if(m)return m[1];if(s.ai.status==='llm_ok')return s.risk.level;if(s.ai.status==='internet_ok'||s.ai.status==='internet_fail')return 'connectivity';return 'not_decided';}
+    function statusClass(status){if(status==='running')return 'run';if(status==='llm_ok'||status==='internet_ok')return 'good';if(status==='llm_fail'||status==='internet_fail'||status==='task_fail')return 'bad';return '';}
+    function labelAiStatus(x){const m={idle:'待分析',running:'分析中',llm_ok:'AI分析完成',llm_fail:'AI分析失败',internet_ok:'联网正常',internet_fail:'联网失败',task_fail:'任务创建失败'};return m[x]||x||'待分析';}
+    function formatAction(a,s){if(!a)return '--';if(!a.startsWith('Applied '))return a;return `通风${s.actuators.fan_power?'开启':'关闭'}，报警${s.actuators.alarm_power?'开启':'关闭'}；照明${s.actuators.light_power?'开启':'关闭'}`;}
+    function deviceDate(s){return new Date();}
+    function dayNo(d){const n=d.getDay();return n===0?7:n;}
+    function minOf(t){return Number(t.slice(0,2))*60+Number(t.slice(3,5));}
+    function courseInfo(s){
+      const now=deviceDate(s);
+      const nowMin=now.getHours()*60+now.getMinutes();
+      const today=scheduleItems.filter(x=>x.enabled&&x.day===dayNo(now)).sort((a,b)=>minOf(a.start)-minOf(b.start));
+      let current=null,next=null;
+      for(const it of today){
+        const st=minOf(it.start),en=minOf(it.end);
+        if(nowMin>=st&&nowMin<=en) current=it;
+        if(!next&&nowMin<st) next=it;
+      }
+      let phase='空闲巡检';
+      if(current) phase='上课守护';
+      else if(next&&minOf(next.start)-nowMin<=5) phase='课前准备';
+      else if(next) phase='等待上课';
+      return {today,current,next,phase,nowMin,room:(current||next||today[0]||{}).room||'A301'};
+    }
+    function renderCourses(info){
+      todaySummary.textContent=info.current?'正在上课':(info.next?'下一节 '+info.next.start:'今日无后续课程');
+      if(!info.today.length){todayList.innerHTML='<div class="timeline-item">今日没有已启用课程</div>';return;}
+      todayList.innerHTML=info.today.map(it=>{
+        const active=info.current===it?' active':'';
+        return `<div class="timeline-item${active}"><b>${it.start}-${it.end}</b> ${esc(it.name)}<div class="label">${esc(it.room||'A301')} · 课前5分钟开灯并AI分析，课后5分钟无人关灯</div></div>`;
+      }).join('');
+    }
+    function stewardTitle(s,info){
+      if(s.risk.level==='Security') return '安防告警';
+      if(s.risk.level==='AirQuality') return '空气需通风';
+      if(s.risk.level==='EnergySave') return '课后节能';
+      if(info.phase==='课前准备') return '课前准备';
+      if(info.phase==='上课守护') return '上课守护';
+      return '空闲巡检';
+    }
+    function stewardText(s,info){
+      if(s.ai.status==='llm_ok'&&s.ai.summary) return s.ai.summary;
+      if(info.current) return `${info.current.name}正在进行，教室管家持续监测空气、人数和噪声。`;
+      if(info.next) return `${info.next.name}将在${info.next.start}开始，系统会在课前5分钟自动准备。`;
+      return s.schedule.status||'教室处于空闲巡检状态。';
+    }
+    function renderEvents(s,info){
+      const list=[
+        `${s.time.local||'--'} ${s.schedule.status||'课程表调度待命'}`,
+        `设备状态：照明${s.actuators.light_power?'开启':'关闭'}，通风${s.actuators.fan_power?'开启':'关闭'}，报警${s.actuators.alarm_power?'开启':'关闭'}`
+      ];
+      if(s.ai.status==='llm_ok'&&s.ai.summary) list.unshift(`AI分析：${s.ai.summary}`);
+      events.innerHTML=list.map(x=>`<div class="log-item">${esc(x)}</div>`).join('');
+    }
+    function pushEnvSample(s){
+      envHistory.push({co2:s.sensors.co2_ppm,pm25:s.sensors.pm25_ugm3,temp:s.sensors.temperature_c,t:new Date()});
+      while(envHistory.length>60) envHistory.shift();
+    }
+    function drawEnvChart(){
+      const c=document.getElementById('envChart');
+      if(!c||!envHistory.length) return;
+      const dpr=window.devicePixelRatio||1;
+      const w=Math.max(320,Math.floor(c.getBoundingClientRect().width));
+      const h=180;
+      if(c.width!==w*dpr||c.height!==h*dpr){c.width=w*dpr;c.height=h*dpr;c.style.height=h+'px';}
+      const ctx=c.getContext('2d');
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,w,h);
+      const pad={l:42,r:42,t:16,b:28};
+      ctx.strokeStyle='#e1e7ee';ctx.lineWidth=1;ctx.font='12px Arial';ctx.fillStyle='#5b6778';
+      for(let i=0;i<=4;i++){
+        const y=pad.t+(h-pad.t-pad.b)*i/4;
+        ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();
+      }
+      ctx.fillText('CO2',8,18);ctx.fillText('PM2.5 / C',w-58,18);
+      function plot(key,color,min,max){
+        ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();
+        envHistory.forEach((p,i)=>{
+          const x=pad.l+(w-pad.l-pad.r)*(envHistory.length===1?1:i/(envHistory.length-1));
+          const y=pad.t+(h-pad.t-pad.b)*(1-(Math.max(min,Math.min(max,p[key]))-min)/(max-min));
+          if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+        });
+        ctx.stroke();
+      }
+      plot('co2','#1769aa',400,1800);
+      plot('pm25','#a43f3f',0,120);
+      plot('temp','#0b7a45',15,40);
+      const latest=envHistory[envHistory.length-1];
+      envNow.textContent=`CO2 ${latest.co2} ppm / PM2.5 ${latest.pm25} / 温度 ${latest.temp.toFixed(1)} C`;
+    }
+    function updateScores(){
+      if(mock.sensors.occupancy_count>35||mock.sensors.noise_dba>80||mock.actuators.alarm_power) mock.risk.level='Security';
+      else if(mock.sensors.co2_ppm>1000||mock.sensors.pm25_ugm3>35||mock.sensors.temperature_c>30) mock.risk.level='AirQuality';
+      else if(mock.sensors.occupancy_count===0&&(mock.actuators.light_power||mock.actuators.fan_power)) mock.risk.level='EnergySave';
+      else mock.risk.level='Normal';
+      mock.risk.air_quality_score=Math.max(0,Math.min(100,100-Math.floor((mock.sensors.co2_ppm-500)/18)-Math.floor(mock.sensors.pm25_ugm3/3)));
+      mock.risk.comfort_score=Math.max(0,Math.min(100,100-Math.floor(Math.abs(mock.sensors.temperature_c*10-260)/3)-Math.abs(mock.sensors.humidity-55)));
+      mock.risk.safety_score=Math.max(0,Math.min(100,100-mock.sensors.occupancy_count-(mock.sensors.noise_dba>70?20:0)));
+    }
+    async function refresh(){
+      mock.device.uptime_s++;
+      mock.time.local=new Date().toLocaleString('zh-CN',{hour12:false});
+      mock.actuators.buzzer_power=mock.actuators.alarm_power;
+      updateScores();
+      const s=mock;
+      const info=courseInfo(s);
+      roomName.textContent=info.room;
+      stewardState.textContent=stewardTitle(s,info);
+      stewardTip.textContent=stewardText(s,info);
+      currentClass.textContent=info.current?`${info.current.name} ${info.current.start}-${info.current.end}`:'当前无课';
+      nextClass.textContent=info.next?`${info.next.name} ${info.next.start}`:'今日无后续课程';
+      classPhase.textContent=info.phase;
+      renderCourses(info);
+      conn.textContent='正常';conn.className='value ok';link.textContent='本地预览';
+      clock.textContent=s.time.local;clock.className='compact-value ok';
+      temp.textContent=s.sensors.temperature_c.toFixed(1)+' C';hum.textContent=s.sensors.humidity+'%';co2.textContent=s.sensors.co2_ppm+' ppm';
+      pm25.textContent=s.sensors.pm25_ugm3+' ug/m3';lux.textContent=s.sensors.ambient_light_lux+' lux'+(s.sensors.ambient_light_fallback?' fallback':'');noise.textContent=s.sensors.noise_dba.toFixed(1)+' dBA';occ.textContent=s.sensors.occupancy_count;
+      pushEnvSample(s);drawEnvChart();
+      health.textContent=Math.round((s.risk.comfort_score+s.risk.air_quality_score+s.risk.safety_score)/3);risk.textContent=labelCondition(s.risk.level);sched.textContent='调度运行';
+      actLight.textContent=s.actuators.light_power?'开启':'关闭';actLight.className='value '+(s.actuators.light_power?'act-on':'act-off');
+      actFan.textContent=s.actuators.fan_power?'开启':'关闭';actFan.className='value '+(s.actuators.fan_power?'act-on':'act-off');
+      actAlarm.textContent=s.actuators.alarm_power?'告警':'正常';actAlarm.className='value '+(s.actuators.alarm_power?'bad-text':'act-off');
+      actBuzzer.textContent=s.actuators.buzzer_power?'响铃':'静音';actBuzzer.className='value '+(s.actuators.buzzer_power?'bad-text':'act-off');
+      const condition=getAiCondition(s);
+      aiHeadline.textContent=labelCondition(condition);aiBadge.textContent=labelAiStatus(s.ai.status);aiBadge.className='pill '+statusClass(s.ai.status);
+      aiStatus.textContent=labelAiStatus(s.ai.status);aiHttp.textContent=s.ai.http_status;aiConditionText.textContent=labelCondition(condition);aiAction.textContent=formatAction(s.ai.action,s);aiReason.textContent=s.ai.summary||s.ai.reason||'--';aiRaw.textContent=s.ai.result||'';
+      renderEvents(s,info);
+      raw.textContent=JSON.stringify(s,null,2);
+      return s;
+    }
+    async function control(name){
+      if(name==='light') mock.actuators.light_power=!mock.actuators.light_power;
+      if(name==='fan'){mock.actuators.fan_power=!mock.actuators.fan_power;mock.actuators.fan_speed=mock.actuators.fan_power?70:0;}
+      if(name==='alarm'){mock.actuators.alarm_power=!mock.actuators.alarm_power;mock.actuators.buzzer_power=mock.actuators.alarm_power;}
+      refresh();
+    }
+    async function scenario(name){
+      mock.policy.scenario=name;
+      mock.sensors.ambient_light_fallback=false;
+      if(name==='Hardware'){Object.assign(mock.sensors,{temperature_c:28.5,humidity:62,co2_ppm:1200,pm25_ugm3:48,ambient_light_lux:460,ambient_light_fallback:true,noise_dba:61.5,occupancy_count:18});}
+      else if(name==='AirQuality'){Object.assign(mock.sensors,{temperature_c:30.8,humidity:70,co2_ppm:1480,pm25_ugm3:66,ambient_light_lux:160,noise_dba:62.0,occupancy_count:22});}
+      else if(name==='Security'){Object.assign(mock.sensors,{temperature_c:28.2,humidity:60,co2_ppm:900,pm25_ugm3:25,ambient_light_lux:80,noise_dba:86.5,occupancy_count:42});}
+      else if(name==='EmptyWaste'){Object.assign(mock.sensors,{temperature_c:26.5,humidity:56,co2_ppm:620,pm25_ugm3:12,ambient_light_lux:420,noise_dba:41.0,occupancy_count:0});mock.actuators.light_power=true;}
+      refresh();
+    }
+    async function runAiTest(){
+      aiHeadline.textContent='运行中';aiBadge.textContent='分析中';aiBadge.className='pill run';aiStatus.textContent='分析中';aiRaw.textContent='running...';
+      mock.ai.runs++;mock.ai.status='running';mock.ai.http_status=0;mock.ai.summary='AI 正在分析当前环境，请稍候。';mock.ai.result='Running HTTPS request in background task...';
+      refresh();await sleep(900);updateScores();mock.ai.status='llm_ok';mock.ai.http_status=200;
+      if(mock.risk.level==='AirQuality'){mock.actuators.fan_power=true;mock.actuators.fan_speed=80;mock.actuators.alarm_power=false;mock.ai.action='通风开启，报警关闭；照明由本地策略关闭';mock.ai.reason='AI condition=air_quality. 二氧化碳或 PM2.5 偏高，建议加强通风。';mock.ai.summary='当前空气质量异常，二氧化碳或 PM2.5 偏高，已建议开启风扇加强通风。';mock.ai.result='{"condition":"air_quality","actions":{"fan_power":true,"fan_speed":80,"alarm_power":false}}';}
+      else if(mock.risk.level==='Security'){mock.actuators.alarm_power=true;mock.ai.action='通风关闭，报警开启；照明由本地策略关闭';mock.ai.reason='AI condition=security. 人数或噪声超过阈值，存在安防风险。';mock.ai.summary='当前存在安防风险，人数或噪声超过阈值，已建议开启报警和蜂鸣器。';mock.ai.result='{"condition":"security","actions":{"fan_power":false,"fan_speed":0,"alarm_power":true}}';}
+      else if(mock.risk.level==='EnergySave'){mock.actuators.fan_power=false;mock.actuators.fan_speed=0;mock.actuators.alarm_power=false;mock.ai.action='通风关闭，报警关闭；照明由本地策略'+(mock.actuators.light_power?'开启':'关闭');mock.ai.reason='AI condition=energy_save. 当前无人占用，建议关闭不必要负载。';mock.ai.summary='当前区域无人占用，环境稳定，已建议关闭风扇；灯光由课程表本地逻辑控制。';mock.ai.result='{"condition":"energy_save","actions":{"fan_power":false,"fan_speed":0,"alarm_power":false}}';}
+      else{mock.ai.action='通风关闭，报警关闭；照明由本地策略关闭';mock.actuators.alarm_power=false;mock.ai.reason='AI condition=normal. 当前环境指标正常，无需调整执行器。';mock.ai.summary='当前环境状态正常，温湿度、空气质量和安防指标均处于可接受范围。';mock.ai.result='{"condition":"normal","actions":{"fan_power":false,"fan_speed":0,"alarm_power":false}}';}
+      await refresh();alert(mock.ai.summary);
+    }
+    refresh();
+    setInterval(refresh,1000);
+  </script>
+</body>
+</html>
